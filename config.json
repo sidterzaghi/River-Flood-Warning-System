@@ -1,0 +1,7 @@
+{
+  "monitored_stations": [],
+  "whatsapp_recipients": [],
+  "check_interval_minutes": 15,
+  "whatsapp_api_provider": "twilio",
+  "alert_cooldown_minutes": 30
+}
