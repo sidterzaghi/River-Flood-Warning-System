@@ -20,9 +20,14 @@ def dispatch_alerts(
     evaluation: dict[str, Any],
     recipients: list[str],
     provider: str = "twilio",
-) -> None:
+) -> int:
     load_dotenv()
     message = build_alert_message(station, evaluation)
+    sent_count = 0
+
+    if not recipients:
+        print("[WHATSAPP] No recipients configured; alert was not sent.")
+        return sent_count
 
     for recipient in recipients:
         try:
@@ -33,8 +38,10 @@ def dispatch_alerts(
             else:
                 raise ValueError(f"Unsupported WhatsApp provider: {provider}")
             print(f"[WHATSAPP] Alert sent to {recipient}")
+            sent_count += 1
         except Exception as exc:
             print(f"[WHATSAPP] Failed to send alert to {recipient}: {exc}")
+    return sent_count
 
 
 def build_alert_message(station: dict[str, Any], evaluation: dict[str, Any]) -> str:

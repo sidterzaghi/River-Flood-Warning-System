@@ -21,6 +21,11 @@ def run_cycle() -> bool:
     config = load_config("config.json")
     station_count = len(config["monitored_stations"])
     print(f"[{now()}] Starting river watch cycle for {station_count} stations...")
+    print(
+        f"[CONFIG] Recipients: {len(config['whatsapp_recipients'])}; "
+        f"provider: {config['whatsapp_api_provider']}; "
+        f"alert cooldown: {config['alert_cooldown_minutes']} minutes."
+    )
 
     if station_count == 0:
         print("[CONFIG] No monitored stations configured. Run python setup.py to add stations.")
@@ -31,6 +36,7 @@ def run_cycle() -> bool:
         live_level_count = sum(1 for station in all_stations if station.get("water_level_m") is not None)
         print(f"[DHM] Fetched {len(all_stations)} stations; {live_level_count} have live water levels.")
         monitored = filter_monitored_stations(all_stations, config)
+        cycle_success = True
 
         for station in monitored:
             evaluation = evaluate_station(
@@ -38,20 +44,29 @@ def run_cycle() -> bool:
                 last_alert_times,
                 alert_cooldown_minutes=config["alert_cooldown_minutes"],
             )
+            print(
+                f"[CHECK] {station['station_name']} ({station['station_no']}) - "
+                f"level={station.get('water_level_m')}m, "
+                f"threshold={evaluation.get('effective_threshold_m')}m"
+            )
 
             if evaluation["should_alert"]:
-                dispatch_alerts(
+                sent_count = dispatch_alerts(
                     station,
                     evaluation,
                     config["whatsapp_recipients"],
                     provider=config["whatsapp_api_provider"],
                 )
-                last_alert_times[str(station["station_no"])] = datetime.now()
-                print(f"[ALERT SENT] {station['station_name']} - {evaluation['reason']}")
+                if sent_count > 0:
+                    last_alert_times[str(station["station_no"])] = datetime.now()
+                    print(f"[ALERT SENT] {station['station_name']} - {evaluation['reason']}")
+                else:
+                    cycle_success = False
+                    print(f"[ALERT FAILED] {station['station_name']} - No WhatsApp messages were delivered.")
             else:
                 print(f"[OK] {station['station_name']} - {evaluation['reason']}")
         save_alert_state(last_alert_times)
-        return True
+        return cycle_success
     except Exception as exc:
         print(f"[FATAL ERROR] Cycle failed: {exc}")
         save_alert_state(last_alert_times)
