@@ -1,5 +1,6 @@
 import argparse
 import json
+import sys
 import time
 from datetime import datetime
 from pathlib import Path
@@ -14,7 +15,7 @@ STATE_PATH = Path("state.json")
 last_alert_times: dict[str, datetime] = {}
 
 
-def run_cycle() -> None:
+def run_cycle() -> bool:
     global last_alert_times
     last_alert_times = load_alert_state()
     config = load_config("config.json")
@@ -23,10 +24,12 @@ def run_cycle() -> None:
 
     if station_count == 0:
         print("[CONFIG] No monitored stations configured. Run python setup.py to add stations.")
-        return
+        return True
 
     try:
         all_stations = scrape_river_watch()
+        live_level_count = sum(1 for station in all_stations if station.get("water_level_m") is not None)
+        print(f"[DHM] Fetched {len(all_stations)} stations; {live_level_count} have live water levels.")
         monitored = filter_monitored_stations(all_stations, config)
 
         for station in monitored:
@@ -48,9 +51,11 @@ def run_cycle() -> None:
             else:
                 print(f"[OK] {station['station_name']} - {evaluation['reason']}")
         save_alert_state(last_alert_times)
+        return True
     except Exception as exc:
         print(f"[FATAL ERROR] Cycle failed: {exc}")
         save_alert_state(last_alert_times)
+        return False
 
 
 def run_daemon() -> None:
@@ -74,7 +79,8 @@ def main() -> None:
     if args.daemon:
         run_daemon()
     else:
-        run_cycle()
+        if not run_cycle():
+            sys.exit(1)
 
 
 def now() -> str:

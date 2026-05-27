@@ -55,6 +55,7 @@ The repository now contains a Python backend daemon structure for:
 - `main.py` exits cleanly when no stations are configured.
 - Daemon mode is available for repeated scraping using the configured interval.
 - Scheduled GitHub Actions workflow is available for laptop-independent free hosting.
+- Monitoring cycles now print DHM station/live-level counts and exit nonzero on fatal one-cycle failures.
 - `git diff --check` reports no whitespace errors.
 
 ## Not Yet Verified
