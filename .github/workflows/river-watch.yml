@@ -1,4 +1,7 @@
-name: River Watch
+name: River Watch Alerts
+
+permissions:
+  contents: read
 
 on:
   schedule:
