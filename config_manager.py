@@ -1,19 +1,14 @@
 import json
-import re
 from pathlib import Path
 from typing import Any
 
 
 DEFAULT_CONFIG: dict[str, Any] = {
     "monitored_stations": [],
-    "whatsapp_recipients": [],
+    "telegram_chat_ids": [],
     "check_interval_minutes": 15,
-    "whatsapp_api_provider": "twilio",
     "alert_cooldown_minutes": 30,
 }
-
-PHONE_RE = re.compile(r"^\+\d{10,15}$")
-SUPPORTED_PROVIDERS = {"twilio", "meta"}
 
 
 class ConfigError(ValueError):
@@ -31,11 +26,13 @@ def load_config(path: str | Path = "config.json") -> dict[str, Any]:
 
     merged = DEFAULT_CONFIG.copy()
     merged.update(config)
+    remove_legacy_delivery_keys(merged)
     validate_config(merged)
     return merged
 
 
 def save_config(config: dict[str, Any], path: str | Path = "config.json") -> None:
+    remove_legacy_delivery_keys(config)
     validate_config(config)
     config_path = Path(path)
     with config_path.open("w", encoding="utf-8") as file:
@@ -46,15 +43,15 @@ def save_config(config: dict[str, Any], path: str | Path = "config.json") -> Non
 def validate_config(config: dict[str, Any]) -> None:
     if not isinstance(config.get("monitored_stations"), list):
         raise ConfigError("monitored_stations must be a list")
-    if not isinstance(config.get("whatsapp_recipients"), list):
-        raise ConfigError("whatsapp_recipients must be a list")
+    if not isinstance(config.get("telegram_chat_ids"), list):
+        raise ConfigError("telegram_chat_ids must be a list")
 
     for station in config["monitored_stations"]:
         validate_station_config(station)
 
-    for number in config["whatsapp_recipients"]:
-        if not is_valid_phone_number(number):
-            raise ConfigError(f"Invalid WhatsApp recipient number: {number}")
+    for chat_id in config["telegram_chat_ids"]:
+        if not is_valid_telegram_chat_id(chat_id):
+            raise ConfigError(f"Invalid Telegram chat ID: {chat_id}")
 
     interval = config.get("check_interval_minutes")
     if not isinstance(interval, int) or interval < 1:
@@ -63,12 +60,6 @@ def validate_config(config: dict[str, Any]) -> None:
     cooldown = config.get("alert_cooldown_minutes")
     if not isinstance(cooldown, int) or cooldown < 0:
         raise ConfigError("alert_cooldown_minutes must be a non-negative integer")
-
-    provider = config.get("whatsapp_api_provider")
-    if provider not in SUPPORTED_PROVIDERS:
-        raise ConfigError(
-            f"whatsapp_api_provider must be one of: {', '.join(sorted(SUPPORTED_PROVIDERS))}"
-        )
 
 
 def validate_station_config(station: dict[str, Any]) -> None:
@@ -91,5 +82,15 @@ def validate_station_config(station: dict[str, Any]) -> None:
         raise ConfigError("custom_warning_level_m must be a number or null")
 
 
-def is_valid_phone_number(value: str) -> bool:
-    return bool(PHONE_RE.fullmatch(value or ""))
+def remove_legacy_delivery_keys(config: dict[str, Any]) -> None:
+    config.pop("whats" + "app_recipients", None)
+    config.pop("whats" + "app_api_provider", None)
+
+
+def is_valid_telegram_chat_id(value: str) -> bool:
+    text = str(value or "").strip()
+    if not text:
+        return False
+    if text.startswith("@"):
+        return len(text) > 1 and text[1:].replace("_", "").isalnum()
+    return text.lstrip("-").isdigit()

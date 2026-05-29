@@ -1,14 +1,19 @@
 import pytest
 
-from config_manager import ConfigError, is_valid_phone_number, validate_config
+from config_manager import ConfigError, is_valid_telegram_chat_id, validate_config
 
 
-def test_phone_validation_accepts_e164_numbers():
-    assert is_valid_phone_number("+9779800000001")
+def test_telegram_chat_id_validation_accepts_numeric_ids():
+    assert is_valid_telegram_chat_id("123456789")
+    assert is_valid_telegram_chat_id("-1001234567890")
 
 
-def test_phone_validation_rejects_local_numbers():
-    assert not is_valid_phone_number("9800000001")
+def test_telegram_chat_id_validation_accepts_channel_usernames():
+    assert is_valid_telegram_chat_id("@river_alerts")
+
+
+def test_telegram_chat_id_validation_rejects_empty_values():
+    assert not is_valid_telegram_chat_id("")
 
 
 def test_validate_config_rejects_missing_custom_threshold_when_required():
@@ -21,9 +26,8 @@ def test_validate_config_rejects_missing_custom_threshold_when_required():
                 "use_dhm_warning_level": False,
             }
         ],
-        "whatsapp_recipients": [],
+        "telegram_chat_ids": [],
         "check_interval_minutes": 15,
-        "whatsapp_api_provider": "twilio",
         "alert_cooldown_minutes": 60,
     }
 

@@ -11,36 +11,29 @@ except ImportError:
         return False
 
 
-TWILIO_API_TEMPLATE = "https://api.twilio.com/2010-04-01/Accounts/{sid}/Messages.json"
-META_API_TEMPLATE = "https://graph.facebook.com/v18.0/{phone_number_id}/messages"
+TELEGRAM_API_TEMPLATE = "https://api.telegram.org/bot{token}/sendMessage"
 
 
 def dispatch_alerts(
     station: dict[str, Any],
     evaluation: dict[str, Any],
-    recipients: list[str],
-    provider: str = "twilio",
+    chat_ids: list[str],
 ) -> int:
     load_dotenv()
     message = build_alert_message(station, evaluation)
     sent_count = 0
 
-    if not recipients:
-        print("[WHATSAPP] No recipients configured; alert was not sent.")
+    if not chat_ids:
+        print("[TELEGRAM] No chat IDs configured; alert was not sent.")
         return sent_count
 
-    for recipient in recipients:
+    for chat_id in chat_ids:
         try:
-            if provider == "twilio":
-                send_twilio_message(recipient, message)
-            elif provider == "meta":
-                send_meta_message(recipient, message)
-            else:
-                raise ValueError(f"Unsupported WhatsApp provider: {provider}")
-            print(f"[WHATSAPP] Alert sent to {recipient}")
+            send_telegram_message(chat_id, message)
+            print(f"[TELEGRAM] Alert sent to {chat_id}")
             sent_count += 1
         except Exception as exc:
-            print(f"[WHATSAPP] Failed to send alert to {recipient}: {exc}")
+            print(f"[TELEGRAM] Failed to send alert to {chat_id}: {exc}")
     return sent_count
 
 
@@ -67,45 +60,20 @@ def build_alert_message(station: dict[str, Any], evaluation: dict[str, Any]) -> 
     )
 
 
-def send_twilio_message(recipient: str, message: str) -> None:
-    sid = _required_env("TWILIO_ACCOUNT_SID")
-    token = _required_env("TWILIO_AUTH_TOKEN")
-    sender = _required_env("TWILIO_WHATSAPP_FROM")
-    url = TWILIO_API_TEMPLATE.format(sid=sid)
+def send_telegram_message(chat_id: str, message: str) -> None:
+    token = _required_env("TELEGRAM_BOT_TOKEN")
+    url = TELEGRAM_API_TEMPLATE.format(token=token)
 
     response = requests.post(
         url,
-        auth=(sid, token),
-        data={
-            "From": sender,
-            "To": f"whatsapp:{recipient}",
-            "Body": message,
-        },
-        timeout=30,
-    )
-    raise_for_status_with_details(response, "Twilio")
-
-
-def send_meta_message(recipient: str, message: str) -> None:
-    token = _required_env("META_ACCESS_TOKEN")
-    phone_number_id = _required_env("META_PHONE_NUMBER_ID")
-    url = META_API_TEMPLATE.format(phone_number_id=phone_number_id)
-
-    response = requests.post(
-        url,
-        headers={
-            "Authorization": f"Bearer {token}",
-            "Content-Type": "application/json",
-        },
         json={
-            "messaging_product": "whatsapp",
-            "to": recipient.lstrip("+"),
-            "type": "text",
-            "text": {"preview_url": False, "body": message},
+            "chat_id": chat_id,
+            "text": message,
+            "disable_web_page_preview": True,
         },
         timeout=30,
     )
-    raise_for_status_with_details(response, "Meta")
+    raise_for_status_with_details(response, "Telegram")
 
 
 def raise_for_status_with_details(response: requests.Response, provider: str) -> None:
@@ -124,7 +92,7 @@ def _extract_error_detail(response: requests.Response) -> str:
 
     if isinstance(data, dict):
         parts = []
-        for key in ("code", "message", "more_info", "status"):
+        for key in ("error_code", "description", "code", "message", "more_info", "status"):
             if data.get(key):
                 parts.append(f"{key}={data[key]}")
         if parts:

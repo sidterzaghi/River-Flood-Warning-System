@@ -1,7 +1,7 @@
 import json
 from typing import Any
 
-from config_manager import is_valid_phone_number, load_config, save_config
+from config_manager import is_valid_telegram_chat_id, load_config, save_config
 from scraper import scrape_river_watch
 
 
@@ -16,8 +16,8 @@ def main() -> None:
         print("[1] Add a river station to monitor")
         print("[2] Remove a station")
         print("[3] Set custom warning level for a station")
-        print("[4] Add a WhatsApp recipient number")
-        print("[5] Remove a recipient number")
+        print("[4] Add a Telegram chat ID")
+        print("[5] Remove a Telegram chat ID")
         print("[6] View current configuration")
         print("[7] Save and exit")
 
@@ -132,26 +132,26 @@ def set_custom_warning_level(config: dict[str, Any]) -> None:
 
 
 def add_recipient(config: dict[str, Any]) -> None:
-    number = input("Phone number in E.164 format, e.g. +9779800000001: ").strip()
-    if not is_valid_phone_number(number):
-        print("Invalid phone number format.")
+    chat_id = input("Telegram chat ID, e.g. 123456789 or -1001234567890: ").strip()
+    if not is_valid_telegram_chat_id(chat_id):
+        print("Invalid Telegram chat ID.")
         return
-    if number not in config["whatsapp_recipients"]:
-        config["whatsapp_recipients"].append(number)
-    print(f"Current recipients: {config['whatsapp_recipients']}")
+    if chat_id not in config["telegram_chat_ids"]:
+        config["telegram_chat_ids"].append(chat_id)
+    print(f"Current Telegram chat IDs: {config['telegram_chat_ids']}")
 
 
 def remove_recipient(config: dict[str, Any]) -> None:
-    if not config["whatsapp_recipients"]:
-        print("No recipients configured.")
+    if not config["telegram_chat_ids"]:
+        print("No Telegram chat IDs configured.")
         return
-    for index, number in enumerate(config["whatsapp_recipients"], start=1):
-        print(f"[{index}] {number}")
-    selected = input("Select recipient to remove: ").strip()
-    if not selected.isdigit() or int(selected) < 1 or int(selected) > len(config["whatsapp_recipients"]):
+    for index, chat_id in enumerate(config["telegram_chat_ids"], start=1):
+        print(f"[{index}] {chat_id}")
+    selected = input("Select Telegram chat ID to remove: ").strip()
+    if not selected.isdigit() or int(selected) < 1 or int(selected) > len(config["telegram_chat_ids"]):
         print("Invalid selection.")
         return
-    removed = config["whatsapp_recipients"].pop(int(selected) - 1)
+    removed = config["telegram_chat_ids"].pop(int(selected) - 1)
     print(f"Removed {removed}.")
 
 
@@ -212,18 +212,17 @@ def build_confirmation_lines(config: dict[str, Any]) -> list[str]:
     else:
         lines.append("- None")
 
-    recipients = config.get("whatsapp_recipients", [])
-    lines.extend(["", f"WhatsApp recipients: {len(recipients)}"])
-    if recipients:
-        for index, number in enumerate(recipients, start=1):
-            lines.append(f"{index}. {number}")
+    chat_ids = config.get("telegram_chat_ids", [])
+    lines.extend(["", f"Telegram chat IDs: {len(chat_ids)}"])
+    if chat_ids:
+        for index, chat_id in enumerate(chat_ids, start=1):
+            lines.append(f"{index}. {chat_id}")
     else:
         lines.append("- None")
 
     lines.extend(
         [
             "",
-            f"WhatsApp provider: {config.get('whatsapp_api_provider')}",
             f"Check interval: {config.get('check_interval_minutes')} minutes",
             f"Alert cooldown: {config.get('alert_cooldown_minutes')} minutes",
         ]

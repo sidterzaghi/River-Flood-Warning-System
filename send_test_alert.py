@@ -1,6 +1,6 @@
 from typing import Any
 
-from config_manager import load_config
+from config_manager import is_valid_telegram_chat_id, load_config, save_config
 from notifier import build_alert_message, dispatch_alerts
 
 
@@ -20,22 +20,26 @@ TEST_EVALUATION: dict[str, Any] = {
     "should_alert": True,
     "effective_threshold_m": 5.0,
     "threshold_source": "test warning",
-    "reason": "This is a simulated flood warning for WhatsApp delivery testing.",
+    "reason": "This is a simulated flood warning for Telegram delivery testing.",
 }
 
 
 def main() -> None:
     config = load_config("config.json")
-    recipients = config.get("whatsapp_recipients", [])
-    provider = config.get("whatsapp_api_provider", "twilio")
+    chat_ids = config.get("telegram_chat_ids", [])
 
-    if not recipients:
-        print("No WhatsApp recipients configured. Run python setup.py first.")
-        return
+    if not chat_ids:
+        chat_id = input("Enter Telegram chat ID to receive this test alert: ").strip()
+        if not is_valid_telegram_chat_id(chat_id):
+            print("Invalid Telegram chat ID.")
+            return
+        chat_ids = [chat_id]
+        config["telegram_chat_ids"] = chat_ids
+        save_config(config, "config.json")
+        print("Telegram chat ID saved to config.json.")
 
-    print("This will send a TEST flood warning to the configured WhatsApp recipients.")
-    print(f"Provider: {provider}")
-    print(f"Recipients: {', '.join(recipients)}")
+    print("This will send a TEST flood warning to the configured Telegram chat IDs.")
+    print(f"Telegram chat IDs: {', '.join(chat_ids)}")
     print()
     print("Message preview:")
     print("-" * 60)
@@ -43,12 +47,12 @@ def main() -> None:
     print("-" * 60)
     print()
 
-    confirm = input("Send this test WhatsApp alert now? [y/N]: ").strip().lower()
+    confirm = input("Send this test Telegram alert now? [y/N]: ").strip().lower()
     if confirm not in {"y", "yes"}:
         print("Test alert cancelled.")
         return
 
-    dispatch_alerts(TEST_STATION, TEST_EVALUATION, recipients, provider=provider)
+    dispatch_alerts(TEST_STATION, TEST_EVALUATION, chat_ids)
 
 
 if __name__ == "__main__":

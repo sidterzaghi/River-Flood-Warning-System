@@ -37,22 +37,17 @@ jobs:
       - name: Install dependencies
         run: pip install -r requirements.txt
 
+      - name: Install Playwright browser
+        run: playwright install chromium
+
       - name: Write runtime config
         env:
           CONFIG_JSON: ${{ secrets.CONFIG_JSON }}
-          TWILIO_ACCOUNT_SID: ${{ secrets.TWILIO_ACCOUNT_SID }}
-          TWILIO_AUTH_TOKEN: ${{ secrets.TWILIO_AUTH_TOKEN }}
-          TWILIO_WHATSAPP_FROM: ${{ secrets.TWILIO_WHATSAPP_FROM }}
-          META_ACCESS_TOKEN: ${{ secrets.META_ACCESS_TOKEN }}
-          META_PHONE_NUMBER_ID: ${{ secrets.META_PHONE_NUMBER_ID }}
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
         run: |
           printf '%s' "$CONFIG_JSON" > config.json
           {
-            echo "TWILIO_ACCOUNT_SID=$TWILIO_ACCOUNT_SID"
-            echo "TWILIO_AUTH_TOKEN=$TWILIO_AUTH_TOKEN"
-            echo "TWILIO_WHATSAPP_FROM=$TWILIO_WHATSAPP_FROM"
-            echo "META_ACCESS_TOKEN=$META_ACCESS_TOKEN"
-            echo "META_PHONE_NUMBER_ID=$META_PHONE_NUMBER_ID"
+            echo "TELEGRAM_BOT_TOKEN=$TELEGRAM_BOT_TOKEN"
           } > .env
 
       - name: Run one river watch cycle

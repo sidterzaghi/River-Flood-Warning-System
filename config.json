@@ -1,7 +1,15 @@
 {
-  "monitored_stations": [],
-  "whatsapp_recipients": [],
+  "monitored_stations": [
+    {
+      "station_name": "Bagmati River at Khokana",
+      "station_no": "550.05",
+      "custom_warning_level_m": 0.7,
+      "use_dhm_warning_level": false
+    }
+  ],
+  "telegram_chat_ids": [
+    "923829599"
+  ],
   "check_interval_minutes": 15,
-  "whatsapp_api_provider": "twilio",
   "alert_cooldown_minutes": 30
 }

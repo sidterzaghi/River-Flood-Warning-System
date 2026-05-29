@@ -6,7 +6,7 @@ from datetime import datetime
 from pathlib import Path
 
 from analyzer import evaluate_station, filter_monitored_stations
-from config_manager import load_config
+from config_manager import is_valid_telegram_chat_id, load_config, save_config
 from notifier import dispatch_alerts
 from scraper import scrape_river_watch
 
@@ -19,11 +19,11 @@ def run_cycle() -> bool:
     global last_alert_times
     last_alert_times = load_alert_state()
     config = load_config("config.json")
+    ensure_telegram_chat_ids(config)
     station_count = len(config["monitored_stations"])
     print(f"[{now()}] Starting river watch cycle for {station_count} stations...")
     print(
-        f"[CONFIG] Recipients: {len(config['whatsapp_recipients'])}; "
-        f"provider: {config['whatsapp_api_provider']}; "
+        f"[CONFIG] Telegram chat IDs: {len(config['telegram_chat_ids'])}; "
         f"alert cooldown: {config['alert_cooldown_minutes']} minutes."
     )
 
@@ -54,15 +54,14 @@ def run_cycle() -> bool:
                 sent_count = dispatch_alerts(
                     station,
                     evaluation,
-                    config["whatsapp_recipients"],
-                    provider=config["whatsapp_api_provider"],
+                    config["telegram_chat_ids"],
                 )
                 if sent_count > 0:
                     last_alert_times[str(station["station_no"])] = datetime.now()
                     print(f"[ALERT SENT] {station['station_name']} - {evaluation['reason']}")
                 else:
                     cycle_success = False
-                    print(f"[ALERT FAILED] {station['station_name']} - No WhatsApp messages were delivered.")
+                    print(f"[ALERT FAILED] {station['station_name']} - No Telegram messages were delivered.")
             else:
                 print(f"[OK] {station['station_name']} - {evaluation['reason']}")
         save_alert_state(last_alert_times)
@@ -83,7 +82,7 @@ def run_daemon() -> None:
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="DHM river water-level WhatsApp warning system")
+    parser = argparse.ArgumentParser(description="DHM river water-level Telegram warning system")
     parser.add_argument(
         "--daemon",
         action="store_true",
@@ -100,6 +99,25 @@ def main() -> None:
 
 def now() -> str:
     return datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+
+def ensure_telegram_chat_ids(config: dict) -> None:
+    if config.get("telegram_chat_ids"):
+        return
+
+    try:
+        chat_id = input("Enter Telegram chat ID to receive alerts: ").strip()
+    except EOFError:
+        print("[CONFIG] No Telegram chat ID provided; alerts cannot be sent.")
+        return
+
+    if not is_valid_telegram_chat_id(chat_id):
+        print("[CONFIG] Invalid Telegram chat ID; alerts cannot be sent.")
+        return
+
+    config["telegram_chat_ids"] = [chat_id]
+    save_config(config, "config.json")
+    print("[CONFIG] Telegram chat ID saved to config.json.")
 
 
 def load_alert_state(path: Path = STATE_PATH) -> dict[str, datetime]:

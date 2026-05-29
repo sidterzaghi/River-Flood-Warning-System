@@ -1,6 +1,6 @@
 # River Flood Warning System
 
-Python daemon for monitoring DHM Nepal River Watch stations and sending WhatsApp flood warnings when configured thresholds are breached.
+Python daemon for monitoring DHM Nepal River Watch stations and sending Telegram flood warnings when configured thresholds are breached.
 
 ## Setup
 
@@ -12,18 +12,34 @@ playwright install chromium
 copy .env.example .env
 ```
 
-Fill `.env` with either Twilio or Meta WhatsApp credentials.
+Fill `.env` with your Telegram bot token:
 
-## Configure Stations and Recipients
+```text
+TELEGRAM_BOT_TOKEN=123456:your-bot-token
+```
+
+Create a bot with BotFather, send a message to the bot from the Telegram account or group that should receive alerts, then use that chat ID when the program asks for it.
+
+## Configure Stations and Telegram Chat IDs
 
 ```bash
 python setup.py
 ```
 
-The setup CLI fetches DHM stations, lets you select monitored stations, and validates recipient numbers in E.164 format.
-Before saving, it shows a bordered confirmation summary of all configured stations, recipients, provider, interval, and cooldown.
+The setup CLI fetches DHM stations, lets you select monitored stations, and validates Telegram chat IDs. Before saving, it shows a bordered confirmation summary of all configured stations, Telegram chat IDs, interval, and cooldown.
 
-You can also edit `config.json` directly.
+You can also edit `config.json` directly:
+
+```json
+{
+  "monitored_stations": [],
+  "telegram_chat_ids": ["123456789"],
+  "check_interval_minutes": 15,
+  "alert_cooldown_minutes": 30
+}
+```
+
+If `telegram_chat_ids` is empty, `python main.py` and `python send_test_alert.py` will ask for a Telegram chat ID while running and save it to `config.json`.
 
 ## Run One Monitoring Cycle
 
@@ -57,22 +73,19 @@ The included GitHub Actions workflow runs one monitoring cycle every 15 minutes 
 Add these GitHub repository secrets before enabling it:
 
 - `CONFIG_JSON` - the full contents of your local `config.json`
-- `TWILIO_ACCOUNT_SID`
-- `TWILIO_AUTH_TOKEN`
-- `TWILIO_WHATSAPP_FROM`
-- `META_ACCESS_TOKEN` and `META_PHONE_NUMBER_ID` if using Meta instead of Twilio
+- `TELEGRAM_BOT_TOKEN`
 
 The workflow caches `state.json` so alert cooldowns can survive between scheduled runs.
 
-## Send A Test WhatsApp Alert
+## Send A Test Telegram Alert
 
-After configuring recipients and `.env` credentials, send a simulated flood warning:
+After configuring `.env`, send a simulated flood warning:
 
 ```bash
 python send_test_alert.py
 ```
 
-The script previews the test message and asks for confirmation before sending it to all configured recipients.
+The script previews the test message and asks for confirmation before sending it to all configured Telegram chat IDs.
 
 ## Inspect DHM API Candidates
 
