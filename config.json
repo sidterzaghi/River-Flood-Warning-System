@@ -11,5 +11,5 @@
     "923829599"
   ],
   "check_interval_minutes": 15,
-  "alert_cooldown_minutes": 30
+  "alert_cooldown_minutes": 10
 }
